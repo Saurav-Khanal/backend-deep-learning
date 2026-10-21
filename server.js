@@ -3,6 +3,7 @@ const app = express();
 const { randomUUID } = require("crypto");
 const mongodbconnect = require("./db");
 const Note = require("./note");
+const note = require("./note");
 app.use(express.json());
 
 mongodbconnect
@@ -65,7 +66,7 @@ app.post("/notes", validatefield, async (req, res) => {
 app.get("/notes", async (req, res) => {
   try {
     const notes = await Note.find();
-    if (!notes) {
+    if (notes.length===0) {
       res.status(404).json({
         message: "note not found",
       });
