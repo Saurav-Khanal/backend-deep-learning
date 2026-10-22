@@ -1,12 +1,12 @@
+require("node:dns").setServers(["8.8.8.8", "8.8.4.4"]);
 const express = require("express");
 const app = express();
-const { randomUUID } = require("crypto");
-const mongodbconnect = require("./db");
 const Note = require("./note");
-const note = require("./note");
 app.use(express.json());
-
-mongodbconnect
+const mongoose = require("mongoose");
+require("dotenv").config();
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("Mongodb Connected");
     app.listen(3000, () => {
@@ -20,11 +20,6 @@ mongodbconnect
 app.get("/", (req, res) => {
   res.send("your note api is running");
 });
-
-const idassign = (req, res, next) => {
-  req.id = randomUUID();
-  next();
-};
 
 const validatefield = (req, res, next) => {
   const { name, subject } = req.body;
@@ -65,16 +60,16 @@ app.post("/notes", validatefield, async (req, res) => {
 
 app.get("/notes", async (req, res) => {
   try {
-    const notes = await Note.find();
-    if (notes.length===0) {
-      res.status(404).json({
-        message: "note not found",
-      });
+    const { subject } = req.query;
+    const filter = {};
+    if (subject) {
+      filter.subject = subject;
     }
-    res.status(200).json({
-      message: "All notes",
-      notes: notes,
-    });
+    const notes=await Note.find(filter);
+    return res.status(200).json({
+      message:"Notes fetched succesfully",
+      notes:notes
+    })
   } catch (err) {
     res.status(500).json({
       message: "failed to fetch note",
@@ -84,6 +79,11 @@ app.get("/notes", async (req, res) => {
 
 app.get("/notes/:id", async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        message: "Invalid note ID",
+      });
+    }
     const matchingnote = await Note.findById(req.params.id);
     if (!matchingnote) {
       return res.status(404).json({
@@ -101,45 +101,42 @@ app.get("/notes/:id", async (req, res) => {
   }
 });
 
-app.put("/notes/:id",async(req, res) => {
-  try{
-    const updatedNote=await Note.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {new:true}
-    )
-    if(!updatedNote){
+app.put("/notes/:id", validatefield, async (req, res) => {
+  try {
+    const updatedNote = await Note.findByIdAndUpdate(req.params.id, req.body, {
+      returnDocument: "after",
+      runValidators: true,
+    });
+    if (!updatedNote) {
       return res.status(404).json({
-        message:"note not found"
-      })
+        message: "note not found",
+      });
     }
     res.status(200).json({
-      message:"Note updated successfully",
-      note:updatedNote
-    })
-  }catch(err){
+      message: "Note updated successfully",
+      note: updatedNote,
+    });
+  } catch (err) {
     res.status(500).json({
-      message:"failed to update Note"
-    })
+      message: "failed to update Note",
+    });
   }
 });
 
 app.delete("/notes/:id", async (req, res) => {
-  try{
-    const deleteNote=await Note.findByIdAndDelete(
-      req.params.id,
-    )
-    if(!deleteNote){
+  try {
+    const deleteNote = await Note.findByIdAndDelete(req.params.id);
+    if (!deleteNote) {
       return res.status(404).json({
-        message:"note not found"
-      })
+        message: "note not found",
+      });
     }
     res.status(200).json({
-      message:"Note deleted successfully"
-    })
-  }catch(err){
+      message: "Note deleted successfully",
+    });
+  } catch (err) {
     res.status(500).json({
-      message:"failed to delete note"
-    })
+      message: "failed to delete note",
+    });
   }
 });
