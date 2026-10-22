@@ -60,7 +60,7 @@ app.post("/notes", validatefield, async (req, res) => {
 
 app.get("/notes", async (req, res) => {
   try {
-    const { subject,sort} = req.query;
+    const { subject,sort,page=1,limit=10} = req.query;
     const filter = {};
     if (subject) {
       filter.subject = subject;
@@ -72,6 +72,10 @@ app.get("/notes", async (req, res) => {
     if(sort==="-name"){
       query=query.sort({name:-1})
     }
+    //calculate how many notes to skip 
+    const skip=(Number(page)-1)*Number(limit);
+    //apply pagination
+    query=query.skip(skip).limit(Number(limit));
     const notes=await query;
     return res.status(200).json({
       message:"Notes fetched succesfully",
