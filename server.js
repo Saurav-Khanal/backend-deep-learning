@@ -60,15 +60,22 @@ app.post("/notes", validatefield, async (req, res) => {
 
 app.get("/notes", async (req, res) => {
   try {
-    const { subject } = req.query;
+    const { subject,sort} = req.query;
     const filter = {};
     if (subject) {
       filter.subject = subject;
     }
-    const notes=await Note.find(filter);
+    let query=Note.find(filter);
+    if(sort==="name"){
+      query=query.sort({name:1});
+    }
+    if(sort==="-name"){
+      query=query.sort({name:-1})
+    }
+    const notes=await query;
     return res.status(200).json({
       message:"Notes fetched succesfully",
-      notes:notes
+      notes,
     })
   } catch (err) {
     res.status(500).json({
